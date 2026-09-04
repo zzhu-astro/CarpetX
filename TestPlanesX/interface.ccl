@@ -1,0 +1,24 @@
+# Interface definition for thorn TestPlanesX
+implements: TestPlanesX
+inherits: Driver, CarpetXRegrid
+
+uses include header: loop.hxx
+
+private:
+
+# One grid function per index-type centering. The three-digit suffix encodes
+# the centering as <x><y><z>, with 0 = vertex (V) and 1 = cell (C). Every grid
+# function is initialised to the SAME analytic, axis-distinguishing function
+#   f(x,y,z) = x + 100*y + 10000*z
+# evaluated at its own (centering-dependent) world coordinate. A plane writer
+# that snaps to the wrong index, transposes axes, or mishandles a centering
+# therefore produces values that no longer match f at the recorded coordinate.
+
+CCTK_REAL gf000 TYPE=gf CENTERING={VVV} "Vertex-centred test grid function"
+CCTK_REAL gf001 TYPE=gf CENTERING={VVC} "Face-centred (z) test grid function"
+CCTK_REAL gf010 TYPE=gf CENTERING={VCV} "Face-centred (y) test grid function"
+CCTK_REAL gf011 TYPE=gf CENTERING={VCC} "Edge-centred (x) test grid function"
+CCTK_REAL gf100 TYPE=gf CENTERING={CVV} "Face-centred (x) test grid function"
+CCTK_REAL gf101 TYPE=gf CENTERING={CVC} "Edge-centred (y) test grid function"
+CCTK_REAL gf110 TYPE=gf CENTERING={CCV} "Edge-centred (z) test grid function"
+CCTK_REAL gf111 TYPE=gf CENTERING={CCC} "Cell-centred test grid function"

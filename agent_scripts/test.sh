@@ -22,7 +22,20 @@ fi
 
 if [ -f "$summary" ] && grep -Eq 'Number failed *-> *0' "$summary"; then
   echo "✓ test"
-  exit 0
+
+  # Verify 2D plane output (Silo + openPMD) analytically.
+  planelog="$CACTUSX/last-plane-test.log"
+  if CACTUS_DIR="$CACTUSX" \
+    /bin/bash "$CACTUSX/repos/CarpetX/scripts/test-planes.sh" \
+    > "$planelog" 2>&1; then
+    echo "✓ plane verification"
+    exit 0
+  else
+    echo "--- last 40 lines ---"
+    tail -40 "$planelog"
+    echo "✗ plane verification failed — full log: $planelog" >&2
+    exit 1
+  fi
 fi
 
 # List failed tests as Thorn/test from the "Tests failed:" section

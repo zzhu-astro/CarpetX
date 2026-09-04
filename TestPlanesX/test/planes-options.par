@@ -1,0 +1,96 @@
+## Plane output with the size-reducing IO options pinned explicitly:
+##   PlanesX::silo_planes_ghosts = no            (interior-only Silo slabs; default)
+##   PlanesX::silo_planes_single_precision = yes (DB_FLOAT Silo data; non-default)
+##   PlanesX::silo_planes_nameschemes = yes      (pattern metafiles; default)
+##   CarpetX::openpmd_format = "HDF5"            (openPMD planes as .h5; non-default)
+##
+## Same grid and analytic field as planes-single-level (see that parfile and
+## thorn TestPlanesX). Run on 2 ranks so the interior-extent MPI gather
+## (message sizes derived from the interior boxes on both sender and receiver)
+## is exercised. The verifier needs relaxed tolerances for the float32 Silo
+## data (f reaches ~1.8e5, so float32 rounding is ~1e-2 absolute); the openPMD
+## data stays double, and the recorded plane coordinates stay double and
+## exact. Interior-only Silo output must still pass the coverage check (the
+## interior boxes tile the domain plane). The .h5 openPMD output doubles as
+## the input for offline checks with VisIt's (HDF5-only) openPMD reader.
+
+ActiveThorns = "
+    CarpetX
+    PlanesX
+    IOUtil
+    TestPlanesX
+"
+
+Cactus::cctk_itlast = 0
+Cactus::presync_mode = "mixed-error"
+
+CarpetX::ncells_x = 16
+CarpetX::ncells_y = 20
+CarpetX::ncells_z = 24
+
+CarpetX::xmin = -4.0
+CarpetX::ymin = -2.0
+CarpetX::zmin = -6.0
+CarpetX::xmax = 12.0
+CarpetX::ymax = 18.0
+CarpetX::zmax = 18.0
+
+CarpetX::boundary_x = "linear extrapolation"
+CarpetX::boundary_y = "linear extrapolation"
+CarpetX::boundary_z = "linear extrapolation"
+CarpetX::boundary_upper_x = "linear extrapolation"
+CarpetX::boundary_upper_y = "linear extrapolation"
+CarpetX::boundary_upper_z = "linear extrapolation"
+
+CarpetX::max_num_levels = 1
+
+CarpetX::blocking_factor_x = 2
+CarpetX::blocking_factor_y = 2
+CarpetX::blocking_factor_z = 2
+CarpetX::max_grid_size_x = 8
+CarpetX::max_grid_size_y = 8
+CarpetX::max_grid_size_z = 8
+
+IO::out_dir = $parfile
+IO::out_every = 1
+IO::out_fileinfo = "axis labels"
+IO::parfile_write = no
+
+CarpetX::out_metadata = no
+
+PlanesX::silo_plane_vars = "
+    TestPlanesX::gf000
+    TestPlanesX::gf001
+    TestPlanesX::gf010
+    TestPlanesX::gf011
+    TestPlanesX::gf100
+    TestPlanesX::gf101
+    TestPlanesX::gf110
+    TestPlanesX::gf111
+"
+PlanesX::silo_planes = "xy:6.0, xz:8.0, yz:4.0, xy:8.0, xz:10.0, yz:2.0"
+PlanesX::silo_planes_every = 1
+
+PlanesX::silo_planes_ghosts = no
+PlanesX::silo_planes_single_precision = "yes"
+# Namescheme metafiles (single-level: plain multimesh, no mrgtree). The
+# numeric verifier reads leaf files only and is unaffected; the CI VisIt gate
+# opens the namescheme multimesh/multivars.
+PlanesX::silo_planes_nameschemes = yes
+
+CarpetX::openpmd_format = "HDF5"
+PlanesX::openpmd_plane_vars = "
+    TestPlanesX::gf000
+    TestPlanesX::gf001
+    TestPlanesX::gf010
+    TestPlanesX::gf011
+    TestPlanesX::gf100
+    TestPlanesX::gf101
+    TestPlanesX::gf110
+    TestPlanesX::gf111
+"
+PlanesX::openpmd_planes = "xy:6.0, xz:8.0, yz:4.0, xy:8.0, xz:10.0, yz:2.0"
+PlanesX::openpmd_planes_every = 1
+
+PlanesX::planes_int_precision = 4
+PlanesX::planes_frac_precision = 3

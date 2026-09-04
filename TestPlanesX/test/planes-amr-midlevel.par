@@ -1,0 +1,131 @@
+## 2D plane output on a NESTED 3-level AMR hierarchy.
+##
+## Same field, domain and centerings as planes-amr.par, but the refined cube
+## SHRINKS per level (refined_radius[0]=4, [1]=1) so the three levels are
+## genuinely nested with a wide gap, not nearly-coincident:
+##
+##   level 0 : whole domain
+##   level 1 : cube of half-width 4 about (4,8,6)  -> x[0,8] y[4,12] z[2,10]
+##   level 2 : cube of half-width 1 about (4,8,6)  -> x[3,5] y[7,9]  z[5,7]
+##
+## (AMReX grows each by a ~1-cell error buffer, so level 2 is really ~x[2.5,5.5]
+## y[6.5,9.5] z[4.5,7.5]; the gap to level 1 is several cells wide on every face,
+## so the level a plane reaches is robust to buffering/blocking.)
+##
+## This exercises the three distinct AMR-mrgtree regimes in one run:
+##   xy:6.0  (z=6)  intersects ALL three levels (level 2 present in a sub-patch)
+##                  -> full AMR mrgtree.
+##   xy:9.0  (z=9)  inside the domain and inside level 1, but ABOVE level 2
+##                  (z=9 > ~7.5) -> intersects levels 0 and 1 but NOT the finest.
+##                  The mrgtree is still emitted (level 0 has level-1 children),
+##                  but its finest level region is empty -- a present-but-empty
+##                  level the reader must tolerate.
+##   xy:14.0 (z=14) inside the domain but above level 1 -> level 0 only, no
+##                  parent-child relationship, so the Silo metafile falls back to
+##                  a plain multimesh (no mrgtree); see PlanesX/doc/plane_output.md.
+##
+## Because TestPlanesX re-applies the analytic field at initial and postregrid,
+## every level holds f exactly, independent of prolongation.
+
+ActiveThorns = "
+    CarpetX
+    PlanesX
+    IOUtil
+    TestPlanesX
+"
+
+Cactus::cctk_itlast = 0
+Cactus::presync_mode = "mixed-error"
+
+# Distinct cell count and non-zero origin per axis; dx = 1 on the coarse level.
+CarpetX::ncells_x = 16
+CarpetX::ncells_y = 20
+CarpetX::ncells_z = 24
+
+CarpetX::xmin = -4.0
+CarpetX::ymin = -2.0
+CarpetX::zmin = -6.0
+CarpetX::xmax = 12.0
+CarpetX::ymax = 18.0
+CarpetX::zmax = 18.0
+
+CarpetX::boundary_x = "linear extrapolation"
+CarpetX::boundary_y = "linear extrapolation"
+CarpetX::boundary_z = "linear extrapolation"
+CarpetX::boundary_upper_x = "linear extrapolation"
+CarpetX::boundary_upper_y = "linear extrapolation"
+CarpetX::boundary_upper_z = "linear extrapolation"
+
+# Three nested levels (see header). The error estimator (TestPlanesX) flags a cube
+# of half-width refined_radius[L] about the centre on each level L.
+CarpetX::max_num_levels = 3
+CarpetX::regrid_every = 1
+Driver::regrid_error_threshold = 0.5
+
+CarpetX::ghost_size = 1
+# ddf prolongation fills the staggered coarse-fine ghost cells of a newly
+# created level (the "conservative" interpolator leaves a face ghost layer
+# unfilled until the next SYNC, which trips CarpetX's poison guard for
+# cell-centred grid functions). With ddf the poison guard can stay on.
+CarpetX::prolongation_type = "ddf"
+CarpetX::prolongation_order = 1
+CarpetX::poison_undefined_values = yes
+
+CarpetX::blocking_factor_x = 2
+CarpetX::blocking_factor_y = 2
+CarpetX::blocking_factor_z = 2
+
+# Small max_grid_size forces several boxes per level so that, run on >1 rank,
+# the Silo MPI gather and openPMD per-rank collective chunks are exercised on
+# every refinement level.
+CarpetX::max_grid_size_x = 8
+CarpetX::max_grid_size_y = 8
+CarpetX::max_grid_size_z = 8
+
+TestPlanesX::refined_center_x = 4.0
+TestPlanesX::refined_center_y = 8.0
+TestPlanesX::refined_center_z = 6.0
+# Shrinking half-size per level: level 1 = half-width 4, level 2 = half-width 1.
+# refined_radius[2] is unused (no level 3 with max_num_levels=3).
+TestPlanesX::refined_radius[0] = 4.0
+TestPlanesX::refined_radius[1] = 1.0
+TestPlanesX::refined_radius[2] = 1.0
+
+IO::out_dir = $parfile
+IO::out_every = 1
+IO::out_fileinfo = "axis labels"
+IO::parfile_write = no
+
+CarpetX::out_metadata = no
+
+# Three xy planes spanning the three level-crossing regimes (see header):
+# all-levels (z=6), levels 0+1 only / not the finest (z=9), and level 0 only
+# (z=14). All eight centerings are written on each.
+PlanesX::silo_plane_vars = "
+    TestPlanesX::gf000
+    TestPlanesX::gf001
+    TestPlanesX::gf010
+    TestPlanesX::gf011
+    TestPlanesX::gf100
+    TestPlanesX::gf101
+    TestPlanesX::gf110
+    TestPlanesX::gf111
+"
+PlanesX::silo_planes = "xy:6.0, xy:9.0, xy:14.0"
+PlanesX::silo_planes_every = 1
+
+PlanesX::openpmd_plane_vars = "
+    TestPlanesX::gf000
+    TestPlanesX::gf001
+    TestPlanesX::gf010
+    TestPlanesX::gf011
+    TestPlanesX::gf100
+    TestPlanesX::gf101
+    TestPlanesX::gf110
+    TestPlanesX::gf111
+"
+PlanesX::openpmd_planes = "xy:6.0, xy:9.0, xy:14.0"
+PlanesX::openpmd_planes_every = 1
+
+PlanesX::planes_int_precision = 4
+PlanesX::planes_frac_precision = 3

@@ -1,0 +1,95 @@
+## Edge cases for 2D plane parsing, snapping and tag formatting.
+##
+##   yz:7.5     half-integer elevation: snaps to the nearest vertex (x=8) for
+##              vertex-centred axes but is an exact cell centre (x=7.5) for
+##              cell-centred axes -- the two centerings land on different
+##              slices from the same spec.
+##   xz:-1.0    negative elevation: exercises the "neg" sign in the tag.
+##   xy:5.1234  more fractional digits than planes_frac_precision=3: the
+##              elevation is rounded to 5.123 (one-time degradation warning) and
+##              that rounded value is both the tag and the snap target.
+##   xy:100.0   outside the domain along z: must emit a one-time warning and be
+##              skipped (no slab written).
+##   yz:-4.0    exactly on the lower x domain face (x=xmin): vertex-in-x
+##              centerings emit the boundary vertex, while cell-in-x centerings
+##              snap half a cell outside the domain and produce no slab -- so the
+##              same spec yields slabs for some centerings and none for others.
+##   nocolon / qr:1.0 / xy:abc / xz:2.0junk
+##              malformed specs (missing ':', unknown axes, unparseable
+##              elevation, trailing junk): each is skipped with a one-time
+##              warning; the valid planes are still written.
+##
+## The verifier checks every value that *is* written against f at its recorded
+## coordinate, and confirms the out-of-domain plane produced no data.
+
+ActiveThorns = "
+    CarpetX
+    PlanesX
+    IOUtil
+    TestPlanesX
+"
+
+Cactus::cctk_itlast = 0
+Cactus::presync_mode = "mixed-error"
+
+CarpetX::ncells_x = 16
+CarpetX::ncells_y = 20
+CarpetX::ncells_z = 24
+
+CarpetX::xmin = -4.0
+CarpetX::ymin = -2.0
+CarpetX::zmin = -6.0
+CarpetX::xmax = 12.0
+CarpetX::ymax = 18.0
+CarpetX::zmax = 18.0
+
+CarpetX::boundary_x = "linear extrapolation"
+CarpetX::boundary_y = "linear extrapolation"
+CarpetX::boundary_z = "linear extrapolation"
+CarpetX::boundary_upper_x = "linear extrapolation"
+CarpetX::boundary_upper_y = "linear extrapolation"
+CarpetX::boundary_upper_z = "linear extrapolation"
+
+CarpetX::max_num_levels = 1
+
+# blocking_factor=2 keeps ncells (16,20,24) valid (the default 8 does not
+# divide 20).
+CarpetX::blocking_factor_x = 2
+CarpetX::blocking_factor_y = 2
+CarpetX::blocking_factor_z = 2
+
+IO::out_dir = $parfile
+IO::out_every = 1
+IO::out_fileinfo = "axis labels"
+IO::parfile_write = no
+
+CarpetX::out_metadata = no
+
+PlanesX::silo_plane_vars = "
+    TestPlanesX::gf000
+    TestPlanesX::gf001
+    TestPlanesX::gf010
+    TestPlanesX::gf011
+    TestPlanesX::gf100
+    TestPlanesX::gf101
+    TestPlanesX::gf110
+    TestPlanesX::gf111
+"
+PlanesX::silo_planes = "yz:3.5, xz:-1.0, xy:5.1234, xy:100.0, yz:-4.0, nocolon, qr:1.0, xy:abc, xz:2.0junk"
+PlanesX::silo_planes_every = 1
+
+PlanesX::openpmd_plane_vars = "
+    TestPlanesX::gf000
+    TestPlanesX::gf001
+    TestPlanesX::gf010
+    TestPlanesX::gf011
+    TestPlanesX::gf100
+    TestPlanesX::gf101
+    TestPlanesX::gf110
+    TestPlanesX::gf111
+"
+PlanesX::openpmd_planes = "yz:3.5, xz:-1.0, xy:5.1234, xy:100.0, yz:-4.0, nocolon, qr:1.0, xy:abc, xz:2.0junk"
+PlanesX::openpmd_planes_every = 1
+
+PlanesX::planes_int_precision = 4
+PlanesX::planes_frac_precision = 3

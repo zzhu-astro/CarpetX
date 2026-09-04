@@ -14,6 +14,7 @@
 #endif
 
 #include <cassert>
+#include <cstdint>
 
 #ifndef HAVE_CAPABILITY_Loop
 #error                                                                         \
@@ -39,8 +40,26 @@ public:
   GridDescBaseDevice(const cGH *cctkGH) : GridDescBase(cctkGH) {}
 
   // Loop over a given box
+  //
+  // NT is the CUDA/HIP block size, i.e. the max-threads argument of
+  // __launch_bounds__. MB is the optional SECOND __launch_bounds__ argument,
+  // min-blocks-per-multiprocessor: it tells the compiler that at least MB
+  // blocks must be resident per SM/CU, which caps the register budget per
+  // thread and so raises achieved occupancy. Use it for kernels that are
+  // register-bound (occupancy 1) and latency-bound, where trading a few
+  // selective spills for a second resident wave is a win.
+  //
+  // MB == 0 (the default) means "unspecified" and takes the ordinary
+  // amrex::ParallelFor<NT> path, byte for byte as before, so every existing
+  // caller -- including the loop_*_device wrappers below, which do not
+  // forward MB -- is completely unaffected.
+  //
+  // MB is a CODEGEN DIRECTIVE ONLY. It changes register allocation and
+  // spilling, never the arithmetic, the iteration space, the traversal order
+  // or the results; a kernel launched with MB != 0 must produce bit-identical
+  // output to the same kernel with MB == 0.
   template <int CI, int CJ, int CK, int VS = 1, int N = 1,
-            int NT = AMREX_GPU_MAX_THREADS, typename F>
+            int NT = AMREX_GPU_MAX_THREADS, int MB = 0, typename F>
   void loop_box_device(const vect<int, dim> &restrict bnd_min,
                        const vect<int, dim> &restrict bnd_max,
                        const vect<int, dim> &restrict loop_min,
@@ -60,6 +79,8 @@ public:
     static_assert(VS > 0);
     static_assert(N >= 0);
     static_assert(NT > 0);
+
+    static_assert(MB >= 0);
 
     static_assert(VS == 1, "Only vector size 1 is supported on GPUs");
 
@@ -81,9 +102,9 @@ public:
                        CJ ? amrex::IndexType::CELL : amrex::IndexType::NODE,
                        CK ? amrex::IndexType::CELL : amrex::IndexType::NODE));
 
-    amrex::ParallelFor<NT>(
-        box, [=, *this] CCTK_DEVICE(const int i, const int j,
-                                    const int k) CCTK_ATTRIBUTE_ALWAYS_INLINE {
+    const auto kernel =
+        [=, *this] CCTK_DEVICE(const int i, const int j,
+                               const int k) CCTK_ATTRIBUTE_ALWAYS_INLINE {
           const vect<int, dim> I = {i, j, k};
           const vect<int, dim> NI =
               vect<int, dim>(I > bnd_max1 - 1) - vect<int, dim>(I < bnd_min1);
@@ -100,7 +121,66 @@ public:
                            bnd_max1, loop_min1, loop_max1);
             f(p);
           }
-        });
+        };
+
+    if constexpr (MB == 0) {
+
+      amrex::ParallelFor<NT>(box, kernel);
+
+    } else {
+#if defined(AMREX_USE_CUDA) || defined(AMREX_USE_HIP)
+
+      // amrex::ParallelFor<NT>(box, ·) launches through AMREX_LAUNCH_KERNEL,
+      // which only ever instantiates launch_global<NT> -- max threads, no
+      // min-blocks (AMReX_GpuLaunch.H). AMReX does provide the three-argument
+      // launch_global<max_threads, min_blocks, L> (AMReX_GpuLaunchGlobal.H),
+      // it is simply not reachable through ParallelFor. So mirror the body of
+      // ParallelFor<MT>(BoxND, L) here (AMReX_GpuLaunchFunctsG.H) and launch
+      // through that overload instead.
+      //
+      // Keep this in sync with AMReX if the ParallelFor internals change. Note
+      // it must call detail::call_f_intvect_handler rather than the lambda
+      // directly: the callable built above takes (i, j, k), and the handler is
+      // what adapts an IntVect to that signature (and supplies the optional
+      // Gpu::Handler argument for callables that want it).
+      const amrex::BoxIndexer indexer(box);
+      const auto &nec = amrex::Gpu::makeNExecutionConfigs<NT>(box);
+      for (const auto &ec : nec) {
+        const auto start_idx = std::uint64_t(ec.start_idx);
+        const auto kernel1 = [=] AMREX_GPU_DEVICE() noexcept {
+          const auto icell =
+              std::uint64_t(NT) * blockIdx.x + threadIdx.x + start_idx;
+          if (icell < indexer.numPts()) {
+            const auto iv = indexer.intVect(icell);
+            amrex::detail::call_f_intvect_handler(
+                kernel, iv,
+                amrex::Gpu::Handler(
+                    amrex::min((indexer.numPts() - icell +
+                                std::uint64_t(threadIdx.x)),
+                               std::uint64_t(NT))));
+          }
+        };
+#if defined(AMREX_USE_CUDA)
+        amrex::launch_global<NT, MB>
+            <<<ec.nblocks, NT, 0, amrex::Gpu::gpuStream()>>>(kernel1);
+#else
+        // HIP_KERNEL_NAME protects the comma in the template argument list
+        // from hipLaunchKernelGGL's macro argument splitting.
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(amrex::launch_global<NT, MB>),
+                           ec.nblocks, NT, 0, amrex::Gpu::gpuStream(), kernel1);
+#endif
+      }
+      AMREX_GPU_ERROR_CHECK();
+
+#else
+
+      // Other GPU backends (SYCL) have no launch_global and no
+      // min-blocks-per-multiprocessor equivalent. MB is a codegen hint, so
+      // dropping it changes performance only, never results.
+      amrex::ParallelFor<NT>(box, kernel);
+
+#endif
+    }
 
     static const bool gpu_sync_after_every_kernel = []() {
       int type;

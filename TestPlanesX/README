@@ -1,0 +1,28 @@
+Cactus Code Thorn TestPlanesX
+Author(s)    : Michail Chabanov <micsma@rit.edu>
+Maintainer(s): Michail Chabanov <micsma@rit.edu>
+Licence      : LGPL
+--------------------------------------------------------------------------
+
+1. Purpose
+
+Test thorn for PlanesX's 2D plane output (extracted from CarpetX) (Silo and openPMD). It declares one
+grid function per index-type centering (the eight V/C combinations) and fills
+each with the same analytic, axis-distinguishing field
+
+    f(x, y, z) = x + 100 y + 10000 z
+
+evaluated at the grid function's own centering-dependent coordinate. The field
+is linear so it is exactly representable on every refinement level after
+prolongation/restriction.
+
+The parfiles in test/ drive single-level and AMR runs that emit xy/xz/yz
+planes (the three principal planes plus one off-centre elevation per
+direction) through both the Silo and openPMD plane writers. The companion
+script test/verify_planes.py reads the written plane files back, reconstructs
+each point's world coordinate from the file metadata, and asserts that the
+stored value equals f to within tolerance -- a rigorous, reference-free check
+that the snap, slab extraction, axis ordering and per-centering coordinates
+are all correct.
+
+See PlanesX/doc/plane_output.md for the feature and test documentation.

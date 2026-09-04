@@ -1,0 +1,22 @@
+# Schedule definitions for thorn PlanesX
+
+# PlanesX_Startup registers an IO method (CCTK_RegisterIOMethod) whose
+# OutputGH callback writes the planes. CarpetX::OutputGH traverses the
+# registered IO methods after all of its built-in writers -- that is, after
+# the CCTK_POSTSTEP and CCTK_ANALYSIS traversals (analysis-bin grid functions
+# are up to date) and on every iteration including recovery -- and before its
+# OutputMeta, so files registered via OutputMeta_RegisterOutputFile are
+# described in the same iteration's metadata. This requires the CarpetX
+# io-method traversal (commit "CarpetX: call registered IO methods from
+# OutputGH"); without it the callback is never invoked and no planes are
+# written -- PlanesX_CheckOutputCalled turns that into a hard error.
+SCHEDULE PlanesX_Startup AT startup
+{
+  LANG: C
+} "Register the 2D plane output method (Silo and openPMD)"
+
+SCHEDULE PlanesX_CheckOutputCalled AT terminate
+{
+  LANG: C
+  OPTIONS: global
+} "Error out if plane output was requested but the IO method never ran"

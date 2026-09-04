@@ -1,0 +1,117 @@
+## 2D plane output on a 3-level AMR hierarchy with interior-only Silo slabs.
+##
+## Identical grid, field, planes and centerings as planes-amr.par (see there),
+## but with the production-failure IO options
+##   PlanesX::silo_planes_ghosts = no            (interior-only Silo slabs)
+##   PlanesX::silo_planes_single_precision = yes (DB_FLOAT Silo data)
+## This is the regression test for the "silo_planes_ghosts = no output
+## unreadable in VisIt" bug observed on a many-rank multi-level production run
+## (see PlanesX/doc/plane_output.md): with interior-only membership a single
+## owner box column intersects each plane, so on several ranks an IO rank can
+## own NO intersecting box for a given plane -- the situation that produced
+## leaf files VisIt rejected and an all-white multimesh. Run on as many ranks
+## as the test harness affords (>=2; more ranks make rank-without-slab planes
+## more likely). The numeric verifier needs relaxed tolerances for the float32
+## Silo data (f reaches ~1.8e5, so float32 rounding is ~1e-2 absolute); the
+## openPMD data stays double. The plane xy:14.0 intersects only the coarsest
+## level, exercising the plain-multimesh (no mrgtree) path in interior mode.
+
+ActiveThorns = "
+    CarpetX
+    PlanesX
+    IOUtil
+    TestPlanesX
+"
+
+Cactus::cctk_itlast = 0
+Cactus::presync_mode = "mixed-error"
+
+# Distinct cell count and non-zero origin per axis; dx = 1 on the coarse level.
+CarpetX::ncells_x = 16
+CarpetX::ncells_y = 20
+CarpetX::ncells_z = 24
+
+CarpetX::xmin = -4.0
+CarpetX::ymin = -2.0
+CarpetX::zmin = -6.0
+CarpetX::xmax = 12.0
+CarpetX::ymax = 18.0
+CarpetX::zmax = 18.0
+
+CarpetX::boundary_x = "linear extrapolation"
+CarpetX::boundary_y = "linear extrapolation"
+CarpetX::boundary_z = "linear extrapolation"
+CarpetX::boundary_upper_x = "linear extrapolation"
+CarpetX::boundary_upper_y = "linear extrapolation"
+CarpetX::boundary_upper_z = "linear extrapolation"
+
+# Three levels refining a cube of half-width 4 about the domain centre (4,8,6).
+CarpetX::max_num_levels = 3
+CarpetX::regrid_every = 1
+Driver::regrid_error_threshold = 0.5
+
+CarpetX::ghost_size = 1
+CarpetX::prolongation_type = "ddf"
+CarpetX::prolongation_order = 1
+CarpetX::poison_undefined_values = yes
+
+CarpetX::blocking_factor_x = 2
+CarpetX::blocking_factor_y = 2
+CarpetX::blocking_factor_z = 2
+
+# Small max_grid_size forces several boxes per level so that, run on >1 rank,
+# interior-only membership leaves some IO ranks without any slab for a plane.
+CarpetX::max_grid_size_x = 8
+CarpetX::max_grid_size_y = 8
+CarpetX::max_grid_size_z = 8
+
+TestPlanesX::refined_center_x = 4.0
+TestPlanesX::refined_center_y = 8.0
+TestPlanesX::refined_center_z = 6.0
+TestPlanesX::refined_radius[0] = 4.0
+TestPlanesX::refined_radius[1] = 4.0
+TestPlanesX::refined_radius[2] = 4.0
+
+IO::out_dir = $parfile
+IO::out_every = 1
+IO::out_fileinfo = "axis labels"
+IO::parfile_write = no
+
+CarpetX::out_metadata = no
+
+PlanesX::silo_plane_vars = "
+    TestPlanesX::gf000
+    TestPlanesX::gf001
+    TestPlanesX::gf010
+    TestPlanesX::gf011
+    TestPlanesX::gf100
+    TestPlanesX::gf101
+    TestPlanesX::gf110
+    TestPlanesX::gf111
+"
+PlanesX::silo_planes = "xy:6.0, xz:8.0, yz:4.0, xy:8.0, xz:10.0, yz:2.0, xy:14.0"
+PlanesX::silo_planes_every = 1
+
+PlanesX::silo_planes_ghosts = no
+PlanesX::silo_planes_single_precision = "yes"
+# Namescheme metafiles combined with the AMR mrgtree (3 levels, multiple
+# files): the namescheme x mrgtree x interior-mode combination the production
+# runs use. planes-amr pins the legacy ghost-extended + explicit-name-list
+# form so both metafile forms stay covered by the CI VisIt gate.
+PlanesX::silo_planes_nameschemes = yes
+
+PlanesX::openpmd_plane_vars = "
+    TestPlanesX::gf000
+    TestPlanesX::gf001
+    TestPlanesX::gf010
+    TestPlanesX::gf011
+    TestPlanesX::gf100
+    TestPlanesX::gf101
+    TestPlanesX::gf110
+    TestPlanesX::gf111
+"
+PlanesX::openpmd_planes = "xy:6.0, xz:8.0, yz:4.0, xy:8.0, xz:10.0, yz:2.0, xy:14.0"
+PlanesX::openpmd_planes_every = 1
+
+PlanesX::planes_int_precision = 4
+PlanesX::planes_frac_precision = 3

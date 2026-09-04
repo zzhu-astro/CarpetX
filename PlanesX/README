@@ -1,0 +1,23 @@
+Cactus Code Thorn PlanesX
+Author(s)    : Michail Chabanov
+Maintainer(s): Michail Chabanov
+Licence      : LGPL
+--------------------------------------------------------------------------
+
+1. Purpose
+
+Output axis-aligned 2D slabs (xy / xz / yz planes) of CarpetX grid functions
+at chosen world-coordinate elevations, in Silo and openPMD format. The output
+is file-per-plane and AMR-aware (per-level snapping, Silo mrgtree level
+shadowing, openPMD AMR-hierarchy attributes); Cartesian patches only.
+
+PlanesX registers an IO method (CCTK_RegisterIOMethod) that CarpetX's
+OutputGH calls after its built-in writers -- after the CCTK_ANALYSIS
+traversal, so analysis-bin grid functions are output up to date. This
+requires the CarpetX commit "call registered IO methods from OutputGH".
+PlanesX follows CarpetX's output conventions (IO::out_dir,
+out_mode/out_proc_every, openpmd_format, compression, cadence fallback to
+CarpetX::out_{silo,openpmd}_every).
+
+See doc/plane_output.md for parameters, file layout, the VisIt path, and the
+TestPlanesX-based verification.

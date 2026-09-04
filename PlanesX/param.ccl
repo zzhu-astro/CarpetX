@@ -1,0 +1,80 @@
+# Parameter definitions for thorn PlanesX
+
+BOOLEAN verbose "Verbose output" STEERABLE=always
+{
+} no
+
+
+
+STRING openpmd_plane_vars "Variables to output as 2d axis-aligned planes in openPMD format" STEERABLE=always
+{
+  ".*" :: ""
+} ""
+
+STRING openpmd_planes "Plane specs for openPMD 2d output, e.g. 'xy:0.0, xy:10.0, xz:0.0'" STEERABLE=always
+{
+  ".*" :: ""
+} ""
+
+INT openpmd_planes_every "Output openPMD plane data every that many iterations" STEERABLE=always
+{
+  -1 :: "use value of CarpetX::out_openpmd_every"
+  0 :: "never output openPMD planes"
+  1:* :: "every that many iterations"
+} -1
+
+
+
+STRING silo_plane_vars "Variables to output as 2d axis-aligned planes in Silo format" STEERABLE=always
+{
+  ".*" :: ""
+} ""
+
+STRING silo_planes "Plane specs for Silo 2d output, e.g. 'xy:0.0, xy:10.0, xz:0.0'" STEERABLE=always
+{
+  ".*" :: ""
+} ""
+
+INT silo_planes_every "Output Silo plane data every that many iterations" STEERABLE=always
+{
+  -1 :: "use value of CarpetX::out_silo_every"
+  0 :: "never output Silo planes"
+  1:* :: "every that many iterations"
+} -1
+
+BOOLEAN silo_planes_ghosts "Include ghost zones in Silo plane output (default no: interior only, smaller files; yes: VisIt-stitched box boundaries at the cost of duplicated ghost data)" STEERABLE=always
+{
+} no
+
+BOOLEAN silo_planes_nameschemes "Use Silo nameschemes in the plane metafiles (one printf-like pattern plus small index arrays instead of one explicit string per block and variable; metafile size becomes independent of block count; needs Silo >= 4.8 readers, any VisIt of the last decade; falls back to explicit name lists per object if the pattern does not reproduce the names)" STEERABLE=always
+{
+} yes
+
+KEYWORD silo_planes_single_precision "Write Silo plane data in single precision (openPMD planes are always CCTK_REAL)" STEERABLE=always
+{
+  "default" :: "follow IO::out_single_precision"
+  "yes"     :: "write DB_FLOAT"
+  "no"      :: "write CCTK_REAL"
+} "default"
+
+
+
+INT planes_int_precision "Minimum number of integer digits in plane-elevation tag (zero-padded)" STEERABLE=always
+{
+  1:8 :: "minimum integer digits"
+} 4
+
+INT planes_frac_precision "Number of fractional digits in plane-elevation tag" STEERABLE=always
+{
+  0:8 :: "fractional digits"
+} 3
+
+
+
+SHARES: IO
+
+USES STRING out_dir
+USES CCTK_INT out_every
+USES KEYWORD out_mode
+USES CCTK_INT out_proc_every
+USES BOOLEAN out_single_precision

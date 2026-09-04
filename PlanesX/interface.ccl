@@ -1,0 +1,19 @@
+# Interface definition for thorn PlanesX
+
+IMPLEMENTS: PlanesX
+
+USES INCLUDE HEADER: silo.hxx
+
+# Needed transitively by CarpetX's driver.hxx
+USES INCLUDE HEADER: defs.hxx
+USES INCLUDE HEADER: div.hxx
+USES INCLUDE HEADER: rational.hxx
+USES INCLUDE HEADER: simd.hxx
+USES INCLUDE HEADER: tuple.hxx
+USES INCLUDE HEADER: vect.hxx
+
+USES INCLUDE HEADER: loop.hxx
+USES INCLUDE HEADER: loop_device.hxx
+
+USES INCLUDE HEADER: driver.hxx
+USES INCLUDE HEADER: timer.hxx

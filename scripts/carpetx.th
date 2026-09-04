@@ -226,6 +226,7 @@ CarpetX/MovingBoxToy
 CarpetX/ODESolvers
 CarpetX/PDESolvers
 CarpetX/ParticlesX
+CarpetX/PlanesX
 CarpetX/PoissonX
 CarpetX/SIMDWaveToyX
 CarpetX/SpacetimeWaveToyX
@@ -241,6 +242,7 @@ CarpetX/TestNorms
 CarpetX/TestODESolvers
 CarpetX/TestODESolvers2
 CarpetX/TestOutput
+CarpetX/TestPlanesX
 CarpetX/TestProlongate
 CarpetX/TestStorageKeyword
 CarpetX/TestSubcycleStepping

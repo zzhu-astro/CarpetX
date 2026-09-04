@@ -1,0 +1,84 @@
+## 2D plane tag formatting with planes_frac_precision = 0.
+##
+## Same field, domain and centerings as planes-single-level.par, but the plane
+## tags carry NO fractional part: with planes_frac_precision = 0 the tag is
+## "<plane>_<axis>_<sign><int>" with no "pNNN" suffix (e.g. xy:6.0 -> xy_z_pos0006,
+## xz:-1.0 -> xz_y_neg0001). This exercises the frac_precision == 0 branch of
+## format_plane_tag and the matching reader/round-trip, which the other parfiles
+## (frac_precision = 3) never hit. All elevations are integers, so the snap
+## targets are unchanged; the verifier checks each written value against f and
+## confirms full coarse-level coverage as usual.
+
+ActiveThorns = "
+    CarpetX
+    PlanesX
+    IOUtil
+    TestPlanesX
+"
+
+Cactus::cctk_itlast = 0
+Cactus::presync_mode = "mixed-error"
+
+CarpetX::ncells_x = 16
+CarpetX::ncells_y = 20
+CarpetX::ncells_z = 24
+
+CarpetX::xmin = -4.0
+CarpetX::ymin = -2.0
+CarpetX::zmin = -6.0
+CarpetX::xmax = 12.0
+CarpetX::ymax = 18.0
+CarpetX::zmax = 18.0
+
+CarpetX::boundary_x = "linear extrapolation"
+CarpetX::boundary_y = "linear extrapolation"
+CarpetX::boundary_z = "linear extrapolation"
+CarpetX::boundary_upper_x = "linear extrapolation"
+CarpetX::boundary_upper_y = "linear extrapolation"
+CarpetX::boundary_upper_z = "linear extrapolation"
+
+CarpetX::max_num_levels = 1
+
+# blocking_factor=2 keeps ncells (16,20,24) valid (the default 8 does not
+# divide 20).
+CarpetX::blocking_factor_x = 2
+CarpetX::blocking_factor_y = 2
+CarpetX::blocking_factor_z = 2
+
+IO::out_dir = $parfile
+IO::out_every = 1
+IO::out_fileinfo = "axis labels"
+IO::parfile_write = no
+
+CarpetX::out_metadata = no
+
+# All eight centerings, on the three principal planes plus one negative
+# elevation, all at integer elevations so the tags carry no fractional part.
+PlanesX::silo_plane_vars = "
+    TestPlanesX::gf000
+    TestPlanesX::gf001
+    TestPlanesX::gf010
+    TestPlanesX::gf011
+    TestPlanesX::gf100
+    TestPlanesX::gf101
+    TestPlanesX::gf110
+    TestPlanesX::gf111
+"
+PlanesX::silo_planes = "xy:6.0, xz:8.0, yz:4.0, xz:-1.0"
+PlanesX::silo_planes_every = 1
+
+PlanesX::openpmd_plane_vars = "
+    TestPlanesX::gf000
+    TestPlanesX::gf001
+    TestPlanesX::gf010
+    TestPlanesX::gf011
+    TestPlanesX::gf100
+    TestPlanesX::gf101
+    TestPlanesX::gf110
+    TestPlanesX::gf111
+"
+PlanesX::openpmd_planes = "xy:6.0, xz:8.0, yz:4.0, xz:-1.0"
+PlanesX::openpmd_planes_every = 1
+
+PlanesX::planes_int_precision = 4
+PlanesX::planes_frac_precision = 0

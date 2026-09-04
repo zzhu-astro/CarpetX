@@ -1,0 +1,21 @@
+# Parameter definitions for thorn TestPlanesX
+
+CCTK_REAL refined_radius[3] "Half-size of the cube flagged for refinement on each level (refined_radius[L] flags level L; setup is fixed to 3 levels). Per-level values let a finer level nest strictly inside a coarser one, so a plane can intersect coarse/middle levels but not the finest."
+{
+  (0:* :: "any positive size"
+} 8.0
+
+CCTK_REAL refined_center_x "x coordinate of the refined cube centre"
+{
+  *:* :: "anything"
+} 16.0
+
+CCTK_REAL refined_center_y "y coordinate of the refined cube centre"
+{
+  *:* :: "anything"
+} 16.0
+
+CCTK_REAL refined_center_z "z coordinate of the refined cube centre"
+{
+  *:* :: "anything"
+} 16.0
